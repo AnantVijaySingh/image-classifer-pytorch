@@ -1,4 +1,4 @@
-# Imports
+# Imports here
 import argparse
 import torch
 from torch import nn
@@ -74,8 +74,8 @@ For this project, the model has been trained on two different neural networks: d
 Please ensure to comment/uncomment code based on the neural network.
 """
 # model = models.densenet169(pretrained=True) # Densenet169 model
-model = models.resnet34(pretrained=True)  # Resnet34 model
-print("Printing pretrained model's parameters", model)
+model = models.resnet34(pretrained=True)  # Resnet50 model
+# print("Printing pretrained model's parameters", model)
 
 # Turn of gradients for model features
 for param in model.parameters():
@@ -198,11 +198,11 @@ for epoch in range(epochs):
                   "Test Loss: {:.3f}.. ".format(test_loss / len(valid_data_loader)),
                   "Test Accuracy: {:.3f}".format(accuracy / len(valid_data_loader)))
 
-# Plotting test and training data loss
-plt.plot(train_losses, label='Training loss')
-plt.plot(validation_loss, label='Validation loss')
-plt.legend(frameon=False)
-plt.show()
+# # Plotting test and training data loss uncomment for use
+# plt.plot(train_losses, label='Training loss')
+# plt.plot(validation_loss, label='Validation loss')
+# plt.legend(frameon=False)
+# plt.show()
 
 # --------------------------------------------------------------------------------
 # --------------------------------------------------------------------------------

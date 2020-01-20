@@ -70,5 +70,4 @@ with open('cat_to_name.json', 'r') as f:
     cat_to_name = json.load(f)
 
 # Print results
-helper.view_classify(args.Path_to_image_file, probs, classes, cat_to_name)
-
+helper.print_prediction_results(args.Path_to_image_file, probs, classes, cat_to_name)
