@@ -75,7 +75,7 @@ def imshow(image, ax=None, title=None):
     return ax
 
 
-def predict(image_path, model, topk=5):
+def predict(image_path, model, sys_device, topk=5):
     """
     Predict the class (or classes) of an image using a trained deep learning model.
     """
@@ -83,8 +83,7 @@ def predict(image_path, model, topk=5):
     # TODO: Implement the code to predict the class from an image file
     processed_image = process_image(image_path)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+    model.to(sys_device)
 
     with torch.no_grad():
         # Set model to evaluation mode

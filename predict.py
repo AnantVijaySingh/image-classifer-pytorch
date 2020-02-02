@@ -54,7 +54,7 @@ def load_checkpoint(filepath):
 model = load_checkpoint(args.Path_to_saved_model_checkpoint)
 
 # Predict name of flower
-probs, classes = helper.predict(args.Path_to_image_file, model, args.top_k_classes)
+probs, classes = helper.predict(args.Path_to_image_file, model, device, args.top_k_classes)
 
 # Mapping
 with open(args.category_names_json, 'r') as f:
