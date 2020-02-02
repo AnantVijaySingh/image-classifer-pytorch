@@ -1,72 +1,63 @@
 # Imports here
 import torch
-from torch import nn
-from torch import optim
-import torch.nn.functional as F
-from torchvision import datasets, transforms, models
-import matplotlib.pyplot as plt
+from torchvision import models
 import json
 import helper
 import argparse
-
+import model_architecture
 
 parser = argparse.ArgumentParser(
-    description='Load and run model to classify flowers. Using resnet34.',
+    description='Load and run model to classify flower images.',
 )
 parser.add_argument('Path_to_image_file', action='store', type=str, help='path to flower image')
+
 parser.add_argument('Path_to_saved_model_checkpoint', action='store', type=str, help='path to model checkpoint')
+
+parser.add_argument('--top_k', dest='top_k_classes', type=int, action='store', default=5,
+                    help='number of top K most likely classes to be returned')
+
+parser.add_argument('--category_names', dest='category_names_json', action='store', default='cat_to_name.json',
+                    help='number of top K most likely classes to be returned')
+
+parser.add_argument('--gpu', dest='use_gpu', action='store_true',
+                    help='use gpu if available')
+
 args = parser.parse_args()
+
+device = torch.device("cuda" if (torch.cuda.is_available() and args.use_gpu) else "cpu")
+print('Model is using: ', device)
 
 
 # Loading model
 # TODO: Write a function that loads a checkpoint and rebuilds the model
 def load_checkpoint(filepath):
-    model = models.resnet34(pretrained=True)
-    # model = models.densenet169(pretrained=True) # Uncomment based on the pre-trained network used
+    checkpoint = torch.load(filepath)
+    model = models.densenet169(pretrained=True) if checkpoint['model_arch'] == 'densenet169' else models.resnet34(
+        pretrained=True)
 
+    # Turn of gradients for model features
     for param in model.parameters():
         param.requires_grad = False
 
-    # Core model functions for resnet34
-    model.fc = nn.Sequential(nn.Linear(512, 512),
-                             nn.ReLU(),
-                             nn.Dropout(0.2),
-                             nn.Linear(512, 256),
-                             nn.ReLU(),
-                             nn.Dropout(0.2),
-                             nn.Linear(256, 256),
-                             nn.ReLU(),
-                             nn.Dropout(0.2),
-                             nn.Linear(256, 102),
-                             nn.LogSoftmax(dim=1))
-
-    # # Core model functions densenet169
-    # model.classifier = nn.Sequential(nn.Linear(1664, 832),
-    #                                  nn.ReLU(),
-    #                                  nn.Dropout(0.2),
-    #                                  nn.Linear(832, 416),
-    #                                  nn.ReLU(),
-    #                                  nn.Dropout(0.2),
-    #                                  nn.Linear(416, 204),
-    #                                  nn.ReLU(),
-    #                                  nn.Dropout(0.2),
-    #                                  nn.Linear(204, 102),
-    #                                  nn.LogSoftmax(dim=1))
-
-    checkpoint = torch.load(filepath)
+    if checkpoint['model_arch'] == 'densenet169':
+        model.classifier = model_architecture.ModelArch('densenet169', checkpoint['input_size'],
+                                                        checkpoint['output_size'], checkpoint['hidden_layers'])
+    elif checkpoint['model_arch'] == 'resnet34':
+        model.fc = model_architecture.ModelArch('resnet34', checkpoint['input_size'], checkpoint['output_size'],
+                                                checkpoint['hidden_layers'])
 
     model.load_state_dict(checkpoint['state_dict'])
+
     return model
 
 
 model = load_checkpoint(args.Path_to_saved_model_checkpoint)
-# model = load_checkpoint(args.Path_to_saved_model_checkpoint) # for densenet169
 
 # Predict name of flower
-probs, classes = helper.predict(args.Path_to_image_file, model)
+probs, classes = helper.predict(args.Path_to_image_file, model, args.top_k_classes)
 
 # Mapping
-with open('cat_to_name.json', 'r') as f:
+with open(args.category_names_json, 'r') as f:
     cat_to_name = json.load(f)
 
 # Print results

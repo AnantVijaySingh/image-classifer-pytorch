@@ -100,7 +100,7 @@ def predict(image_path, model, topk=5):
         prob_output = torch.exp(logps)
 
         # Finding the class with the top probability
-        top_p, top_class = prob_output.topk(5, dim=1)
+        top_p, top_class = prob_output.topk(topk, dim=1)
 
         print(top_p)
         print(top_class)
@@ -145,6 +145,6 @@ def print_prediction_results(image_path, img_probs, img_classes, mapping):
     probs = img_probs.data.numpy().squeeze()
     classes = img_classes.numpy().squeeze()
 
-    for i in range(5):
+    for i in range(classes.size):
         print("Predicted Flower Name: {:20s} ".format(mapping[str(classes[i])]),
               "Probability: {:.3f}.. ".format(probs[i]))

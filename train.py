@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms, models
 import matplotlib.pyplot as plt
 import json
+import model_architecture
 
 # --------------------------------------------------------------------------------
 # --------------------------------------------------------------------------------
@@ -15,8 +16,25 @@ parser = argparse.ArgumentParser(
     description='Training image classifier neural network using resnet34 architecture.',
 )
 parser.add_argument('Path_to_dataset', action='store', type=str, help='path to dataset')
-parser.add_argument('--save_dir', dest='Path_to_checkpoint', action='store', default='checkpointresnet50.pth',
+
+parser.add_argument('--learning_rate', dest='learning_rate', type=float, action='store', default=0.003,
+                    help='learning rate for training')
+
+parser.add_argument('--hidden_units', dest='hidden_units', type=int, nargs='+', action='store',
+                    help='add a list of hidden layer sizes')
+
+parser.add_argument('--epochs', dest='number_of_epochs', type=int, action='store', default=10,
+                    help='number of epochs for training')
+
+parser.add_argument('--gpu', dest='use_gpu', action='store_true',
+                    help='use gpu if available')
+
+parser.add_argument('--arch', dest='arch', action='store', default='resnet34',
+                    help='models supported densenet169 and resnet34')
+
+parser.add_argument('--save_dir', dest='Path_to_checkpoint', action='store', default='checkpoint.pth',
                     help='path to model checkpoint')
+
 args = parser.parse_args()
 
 # --------------------------------------------------------------------------------
@@ -73,9 +91,12 @@ with open('cat_to_name.json', 'r') as f:
 For this project, the model has been trained on two different neural networks: densenet169 and resnet34. 
 Please ensure to comment/uncomment code based on the neural network.
 """
-# model = models.densenet169(pretrained=True) # Densenet169 model
-model = models.resnet34(pretrained=True)  # Resnet50 model
-# print("Printing pretrained model's parameters", model)
+model = models.densenet169(pretrained=True) if args.arch =='densenet169' else models.resnet34(pretrained=True)
+print("------------------------------")
+print("Model Arch Selected: ", args.arch)
+print("------------------------------")
+print("Printing pretrained model's parameters", model)
+print("------------------------------")
 
 # Turn of gradients for model features
 for param in model.parameters():
@@ -85,36 +106,19 @@ for param in model.parameters():
 # --------------------------------------------------------------------------------
 # Defining classifier
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if (torch.cuda.is_available() and args.use_gpu) else "cpu")
+print('Model is using: ', device)
 
-# Core model functions for resnet34
-model.fc = nn.Sequential(nn.Linear(512, 512),
-                         nn.ReLU(),
-                         nn.Dropout(0.2),
-                         nn.Linear(512, 256),
-                         nn.ReLU(),
-                         nn.Dropout(0.2),
-                         nn.Linear(256, 256),
-                         nn.ReLU(),
-                         nn.Dropout(0.2),
-                         nn.Linear(256, 102),
-                         nn.LogSoftmax(dim=1))
-optimizer = optim.Adam(model.fc.parameters(), lr=0.003)
+input_size = 512
 
-# # Core model functions densenet169
-# model.classifier = nn.Sequential(nn.Linear(1664, 832),
-#                                  nn.ReLU(),
-#                                  nn.Dropout(0.2),
-#                                  nn.Linear(832, 416),
-#                                  nn.ReLU(),
-#                                  nn.Dropout(0.2),
-#                                  nn.Linear(416, 204),
-#                                  nn.ReLU(),
-#                                  nn.Dropout(0.2),
-#                                  nn.Linear(204, 102),
-#                                  nn.LogSoftmax(dim=1))
-# optimizer = optim.Adam(model.classifier.parameters(), lr=0.003)  # for densenet169
+if args.arch == 'densenet169':
+    input_size = model.classifier.in_features
+    model.classifier = model_architecture.ModelArch('densenet169', input_size, 102, args.hidden_units)
+elif args.arch == 'resnet34':
+    input_size = model.fc.in_features
+    model.fc = model_architecture.ModelArch('resnet34', input_size, 102, args.hidden_units)
 
+optimizer = optim.Adam(model.classifier.parameters(), lr=args.learning_rate) if args.arch =='densenet169' else optim.Adam(model.fc.parameters(), lr=args.learning_rate)
 criterion = nn.NLLLoss()
 
 # --------------------------------------------------------------------------------
@@ -123,7 +127,7 @@ criterion = nn.NLLLoss()
 model.to(device)
 
 # Model hyperparameters
-epochs = 10
+epochs = args.number_of_epochs
 steps = 0
 print_every = 5
 
@@ -242,11 +246,12 @@ with torch.no_grad():
 # TODO: Save the checkpoint
 model.class_to_idx = train_data.class_to_idx
 
-checkpoint = {'input_size': 1664,
+checkpoint = {'input_size': input_size,
               'output_size': 102,
-              'hidden_layers': [832, 416, 204],
+              'hidden_layers': args.hidden_units,
               'state_dict': model.state_dict(),
-              'class_mapping': model.class_to_idx
+              'class_mapping': model.class_to_idx,
+              'model_arch': args.arch
               }
 
 torch.save(checkpoint, args.Path_to_checkpoint)
